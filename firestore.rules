@@ -1,0 +1,486 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasVerifiedEmail() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function hasVerifiedPhone() {
+      return isSignedIn() && ('phone_number' in request.auth.token) && request.auth.token.phone_number is string && request.auth.token.phone_number.size() >= 6;
+    }
+
+    function isVerifiedUser() {
+      return hasVerifiedEmail() || hasVerifiedPhone();
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidReferralCodeStr(code) {
+      return code is string && code.size() >= 6 && code.size() <= 16 && code.matches('^[A-Z0-9]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (hasVerifiedEmail() && request.auth.token.email == 'arshsharma25637@gmail.com') ||
+        (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)))
+      );
+    }
+
+    function isValidTierMatch(tierId, amountInr, costCoins) {
+      return (tierId == 'gp-10' && amountInr == 10 && costCoins == 10000) ||
+             (tierId == 'gp-25' && amountInr == 25 && costCoins == 24000) ||
+             (tierId == 'gp-50' && amountInr == 50 && costCoins == 47500) ||
+             (tierId == 'gp-100' && amountInr == 100 && costCoins == 92000);
+    }
+
+    function isValidCategoryStatEntry(entry) {
+      return entry is map &&
+        entry.keys().hasAll(['played', 'correct']) &&
+        entry.keys().hasOnly(['played', 'correct']) &&
+        entry.played is int && entry.played >= 0 && entry.played <= 1000000 &&
+        entry.correct is int && entry.correct >= 0 && entry.correct <= entry.played;
+    }
+
+    function isValidCategoryStats(stats) {
+      return stats is map &&
+        stats.keys().hasAll(['gk', 'cricket', 'tech', 'brain']) &&
+        stats.keys().hasOnly(['gk', 'cricket', 'tech', 'brain']) &&
+        isValidCategoryStatEntry(stats.gk) &&
+        isValidCategoryStatEntry(stats.cricket) &&
+        isValidCategoryStatEntry(stats.tech) &&
+        isValidCategoryStatEntry(stats.brain);
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'addedBy', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'addedBy', 'createdAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 120 &&
+        data.addedBy is string && isValidId(data.addedBy) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'email', 'phoneNumber', 'authProvider',
+          'coins', 'totalEarnedCoins', 'roundsPlayed', 'totalQuestions',
+          'totalCorrect', 'bestStreak', 'referralCode', 'referralCount',
+          'categoryStats', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'phoneNumber', 'authProvider',
+          'coins', 'totalEarnedCoins', 'roundsPlayed', 'totalQuestions',
+          'totalCorrect', 'bestStreak', 'referralCode', 'referredBy', 'referralCount',
+        'lastDailyBonusDate', 'lastSpinDate', 'dailyRoundsDate', 'dailyRoundsCount',
+          'categoryStats', 'createdAt', 'updatedAt'
+        ]) &&
+        data.uid is string && data.uid == userId && isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        data.email is string && data.email.size() <= 120 &&
+        data.phoneNumber is string && data.phoneNumber.size() <= 25 &&
+        data.authProvider in ['google', 'phone'] &&
+        data.coins is int && data.coins >= 0 && data.coins <= 10000000 &&
+        data.totalEarnedCoins is int && data.totalEarnedCoins >= 0 && data.totalEarnedCoins <= 10000000 &&
+        data.roundsPlayed is int && data.roundsPlayed >= 0 && data.roundsPlayed <= 1000000 &&
+        data.totalQuestions is int && data.totalQuestions >= 0 && data.totalQuestions <= 5000000 &&
+        data.totalCorrect is int && data.totalCorrect >= 0 && data.totalCorrect <= data.totalQuestions &&
+        data.bestStreak is int && data.bestStreak >= 0 && data.bestStreak <= 10000 &&
+        isValidReferralCodeStr(data.referralCode) &&
+        (!('referredBy' in data) || data.referredBy == null || isValidId(data.referredBy)) &&
+        data.referralCount is int && data.referralCount >= 0 && data.referralCount <= 100000 &&
+        (!('lastDailyBonusDate' in data) || data.lastDailyBonusDate == null || (data.lastDailyBonusDate is string && data.lastDailyBonusDate.size() <= 20)) &&
+        (!('lastSpinDate' in data) || data.lastSpinDate == null || (data.lastSpinDate is string && data.lastSpinDate.size() <= 20)) &&
+        (!('dailyRoundsDate' in data) || data.dailyRoundsDate == null || (data.dailyRoundsDate is string && data.dailyRoundsDate.size() <= 20)) &&
+        (!('dailyRoundsCount' in data) || (data.dailyRoundsCount is int && data.dailyRoundsCount >= 0 && data.dailyRoundsCount <= 10000)) &&
+        isValidCategoryStats(data.categoryStats) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLeaderboardEntry(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'totalEarnedCoins', 'bestStreak', 'roundsPlayed', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'displayName', 'totalEarnedCoins', 'bestStreak', 'roundsPlayed', 'updatedAt']) &&
+        data.uid is string && data.uid == userId && isValidId(data.uid) &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        data.totalEarnedCoins is int && data.totalEarnedCoins >= 0 && data.totalEarnedCoins <= 10000000 &&
+        data.bestStreak is int && data.bestStreak >= 0 && data.bestStreak <= 10000 &&
+        data.roundsPlayed is int && data.roundsPlayed >= 0 && data.roundsPlayed <= 1000000 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSponsorConfig(data) {
+      return data.keys().hasAll(['badgeText', 'title', 'description', 'ctaLabel', 'targetUrl', 'isActive', 'updatedAt']) &&
+        data.keys().hasOnly(['badgeText', 'title', 'description', 'ctaLabel', 'targetUrl', 'isActive', 'updatedAt']) &&
+        data.badgeText is string && data.badgeText.size() >= 1 && data.badgeText.size() <= 40 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 280 &&
+        data.ctaLabel is string && data.ctaLabel.size() >= 1 && data.ctaLabel.size() <= 50 &&
+        data.targetUrl is string && data.targetUrl.size() <= 300 && (data.targetUrl == '' || data.targetUrl.matches('^https://.*')) &&
+        data.isActive is bool &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidEconomyConfig(data) {
+      return data.keys().hasAll([
+          'baseCoinsPerRight', 'streakBonusStep', 'speedBonusCoins',
+          'dailyBonusCoins', 'rewardAdCoins', 'dailyRoundLimit', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'baseCoinsPerRight', 'streakBonusStep', 'speedBonusCoins',
+          'dailyBonusCoins', 'rewardAdCoins', 'dailyRoundLimit', 'updatedAt'
+        ]) &&
+        data.baseCoinsPerRight is int && data.baseCoinsPerRight >= 1 && data.baseCoinsPerRight <= 100 &&
+        data.streakBonusStep is int && data.streakBonusStep >= 0 && data.streakBonusStep <= 25 &&
+        data.speedBonusCoins is int && data.speedBonusCoins >= 0 && data.speedBonusCoins <= 25 &&
+        data.dailyBonusCoins is int && data.dailyBonusCoins >= 0 && data.dailyBonusCoins <= 200 &&
+        data.rewardAdCoins is int && data.rewardAdCoins >= 0 && data.rewardAdCoins <= 100 &&
+        data.dailyRoundLimit is int && data.dailyRoundLimit >= 0 && data.dailyRoundLimit <= 200 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReferralCodeDoc(data, code) {
+      return data.keys().hasAll(['code', 'ownerUid', 'ownerName', 'createdAt']) &&
+        data.keys().hasOnly(['code', 'ownerUid', 'ownerName', 'createdAt']) &&
+        data.code == code && isValidReferralCodeStr(data.code) &&
+        data.ownerUid is string && isValidId(data.ownerUid) &&
+        data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidReferralRecord(data, referredUid) {
+      return data.keys().hasAll(['referredUid', 'referrerUid', 'referralCode', 'rewardCoins', 'createdAt']) &&
+        data.keys().hasOnly(['referredUid', 'referrerUid', 'referralCode', 'rewardCoins', 'createdAt']) &&
+        data.referredUid == referredUid && isValidId(data.referredUid) &&
+        data.referrerUid is string && isValidId(data.referrerUid) &&
+        data.referrerUid != data.referredUid &&
+        isValidReferralCodeStr(data.referralCode) &&
+        data.rewardCoins == 100 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidVoucherStock(data) {
+      return data.keys().hasAll(['tierId', 'amountInr', 'code', 'status', 'createdBy', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['tierId', 'amountInr', 'code', 'status', 'assignedToUid', 'assignedRequestId', 'createdBy', 'createdAt', 'updatedAt']) &&
+        data.tierId in ['gp-10', 'gp-25', 'gp-50', 'gp-100'] &&
+        data.amountInr in [10, 25, 50, 100] &&
+        data.code is string && data.code.size() >= 8 && data.code.size() <= 40 &&
+        data.status in ['available', 'assigned'] &&
+        (!('assignedToUid' in data) || data.assignedToUid == null || isValidId(data.assignedToUid)) &&
+        (!('assignedRequestId' in data) || data.assignedRequestId == null || isValidId(data.assignedRequestId)) &&
+        data.createdBy is string && isValidId(data.createdBy) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidVoucherAvailability(data, tierId) {
+      return data.keys().hasAll(['tierId', 'amountInr', 'availableCount', 'updatedAt']) &&
+        data.keys().hasOnly(['tierId', 'amountInr', 'availableCount', 'updatedAt']) &&
+        data.tierId == tierId &&
+        data.tierId in ['gp-10', 'gp-25', 'gp-50', 'gp-100'] &&
+        data.amountInr in [10, 25, 50, 100] &&
+        data.availableCount is int && data.availableCount >= 0 && data.availableCount <= 100000 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRedemptionRequest(data) {
+      return data.keys().hasAll([
+          'userId', 'userContact', 'userName', 'tierId', 'amountInr',
+          'costCoins', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'userId', 'userContact', 'userName', 'tierId', 'amountInr',
+          'costCoins', 'status', 'voucherCode', 'adminNote', 'createdAt', 'updatedAt'
+        ]) &&
+        data.userId is string && isValidId(data.userId) &&
+        data.userContact is string && data.userContact.size() >= 3 && data.userContact.size() <= 120 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 80 &&
+        isValidTierMatch(data.tierId, data.amountInr, data.costCoins) &&
+        data.status in ['pending', 'fulfilled', 'rejected'] &&
+        (!('voucherCode' in data) || data.voucherCode == null || (data.voucherCode is string && data.voucherCode.size() >= 8 && data.voucherCode.size() <= 40)) &&
+        (!('adminNote' in data) || data.adminNote == null || (data.adminNote is string && data.adminNote.size() <= 200)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 1. Admins collection
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isAdmin() || (isVerifiedUser() && request.auth.uid == userId));
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) && isAdmin() && isValidAdminUser(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // 2. Users collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isAdmin() || (isVerifiedUser() && request.auth.uid == userId));
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) &&
+        isVerifiedUser() &&
+        request.auth.uid == userId &&
+        isValidUserProfile(incoming(), userId) &&
+        (
+          (hasVerifiedEmail() && incoming().authProvider == 'google' && incoming().email == request.auth.token.email && incoming().phoneNumber == '') ||
+          (hasVerifiedPhone() && incoming().authProvider == 'phone' && incoming().phoneNumber == request.auth.token.phone_number && incoming().email == '')
+        ) &&
+        incoming().coins == 0 &&
+        incoming().totalEarnedCoins == 0 &&
+        incoming().roundsPlayed == 0 &&
+        incoming().totalQuestions == 0 &&
+        incoming().totalCorrect == 0 &&
+        incoming().bestStreak == 0 &&
+        incoming().referralCount == 0 &&
+        (!('referredBy' in incoming()) || incoming().referredBy == null) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId) &&
+        isVerifiedUser() &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().email == existing().email &&
+        incoming().phoneNumber == existing().phoneNumber &&
+        incoming().authProvider == existing().authProvider &&
+        incoming().referralCode == existing().referralCode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['coins', 'updatedAt'])
+          ) ||
+          (
+            request.auth.uid == userId &&
+            (
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'displayName', 'coins', 'totalEarnedCoins', 'roundsPlayed',
+                  'totalQuestions', 'totalCorrect', 'bestStreak',
+                  'lastDailyBonusDate', 'lastSpinDate', 'dailyRoundsDate', 'dailyRoundsCount',
+                  'categoryStats', 'updatedAt'
+                ]) &&
+                incoming().coins >= existing().coins &&
+                (incoming().coins - existing().coins) <= 250 &&
+                incoming().totalEarnedCoins >= existing().totalEarnedCoins &&
+                (incoming().totalEarnedCoins - existing().totalEarnedCoins) <= 250 &&
+                incoming().roundsPlayed >= existing().roundsPlayed &&
+                incoming().totalQuestions >= existing().totalQuestions &&
+                incoming().totalCorrect >= existing().totalCorrect &&
+                incoming().bestStreak >= existing().bestStreak &&
+                incoming().referralCount == existing().referralCount &&
+                ((!('referredBy' in existing()) && !('referredBy' in incoming())) || (incoming().referredBy == existing().referredBy))
+              ) ||
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'coins', 'totalEarnedCoins', 'referredBy', 'updatedAt'
+                ]) &&
+                (!('referredBy' in existing()) || existing().referredBy == null) &&
+                incoming().referredBy is string &&
+                incoming().referredBy != userId &&
+                incoming().coins == existing().coins + 100 &&
+                incoming().totalEarnedCoins == existing().totalEarnedCoins + 100 &&
+                existsAfter(/databases/$(database)/documents/referrals/$(userId)) &&
+                getAfter(/databases/$(database)/documents/referrals/$(userId)).data.referrerUid == incoming().referredBy
+              ) ||
+              (
+                incoming().diff(existing()).affectedKeys().hasOnly(['coins', 'updatedAt']) &&
+                incoming().coins < existing().coins &&
+                (existing().coins - incoming().coins) in [10000, 24000, 47500, 92000]
+              )
+            )
+          ) ||
+          (
+            request.auth.uid != userId &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'coins', 'totalEarnedCoins', 'referralCount', 'updatedAt'
+            ]) &&
+            incoming().coins == existing().coins + 100 &&
+            incoming().totalEarnedCoins == existing().totalEarnedCoins + 100 &&
+            incoming().referralCount == existing().referralCount + 1 &&
+            !exists(/databases/$(database)/documents/referrals/$(request.auth.uid)) &&
+            existsAfter(/databases/$(database)/documents/referrals/$(request.auth.uid)) &&
+            getAfter(/databases/$(database)/documents/referrals/$(request.auth.uid)).data.referrerUid == userId
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // 3. Public-safe Leaderboard (zero PII; score bounded by user's verified wallet)
+    match /leaderboard/{userId} {
+      allow get: if isValidId(userId) && isVerifiedUser();
+      allow list: if isVerifiedUser() && resource.data.totalEarnedCoins >= 0;
+      allow create: if isValidId(userId) &&
+        isVerifiedUser() &&
+        request.auth.uid == userId &&
+        isValidLeaderboardEntry(incoming(), userId) &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(userId)) &&
+        incoming().totalEarnedCoins <= get(/databases/$(database)/documents/users/$(userId)).data.totalEarnedCoins;
+      allow update: if isValidId(userId) &&
+        isVerifiedUser() &&
+        request.auth.uid == userId &&
+        isValidLeaderboardEntry(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().updatedAt == request.time &&
+        incoming().totalEarnedCoins <= get(/databases/$(database)/documents/users/$(userId)).data.totalEarnedCoins;
+      allow delete: if false;
+    }
+
+    // 4. Admin-managed Sponsor Config (non-PII)
+    match /sponsorConfig/{configId} {
+      allow get: if isValidId(configId) && configId == 'active';
+      allow list: if false;
+      allow create, update: if isValidId(configId) &&
+        configId == 'active' &&
+        isAdmin() &&
+        isValidSponsorConfig(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 4b. Admin-managed Live Economy Config (coin rates & daily round limits)
+    match /economyConfig/{configId} {
+      allow get: if isValidId(configId) && configId == 'active';
+      allow list: if false;
+      allow create, update: if isValidId(configId) &&
+        configId == 'active' &&
+        isAdmin() &&
+        isValidEconomyConfig(incoming()) &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 5. Referral Codes lookup table
+    match /referralCodes/{code} {
+      allow get: if isValidReferralCodeStr(code) && isVerifiedUser();
+      allow list: if false;
+      allow create: if isValidReferralCodeStr(code) &&
+        isVerifiedUser() &&
+        isValidReferralCodeDoc(incoming(), code) &&
+        incoming().ownerUid == request.auth.uid &&
+        incoming().createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // 6. Single-use Referral Claims
+    match /referrals/{referredUid} {
+      allow get: if isValidId(referredUid) && (
+        isAdmin() || (isVerifiedUser() && (referredUid == request.auth.uid || existing().referrerUid == request.auth.uid))
+      );
+      allow list: if isAdmin() || (isVerifiedUser() && (
+        resource.data.referredUid == request.auth.uid || resource.data.referrerUid == request.auth.uid
+      ));
+      allow create: if isValidId(referredUid) &&
+        isVerifiedUser() &&
+        request.auth.uid == referredUid &&
+        isValidReferralRecord(incoming(), referredUid) &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/referralCodes/$(incoming().referralCode)) &&
+        get(/databases/$(database)/documents/referralCodes/$(incoming().referralCode)).data.ownerUid == incoming().referrerUid &&
+        getAfter(/databases/$(database)/documents/users/$(incoming().referrerUid)).data.coins ==
+          get(/databases/$(database)/documents/users/$(incoming().referrerUid)).data.coins + 100 &&
+        getAfter(/databases/$(database)/documents/users/$(referredUid)).data.referredBy == incoming().referrerUid;
+      allow update, delete: if false;
+    }
+
+    // 7. Voucher Stock (Admin-only secret real Google Play codes)
+    match /voucherStock/{voucherId} {
+      allow get: if isValidId(voucherId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(voucherId) &&
+        isAdmin() &&
+        isValidVoucherStock(incoming()) &&
+        incoming().status == 'available' &&
+        incoming().createdBy == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(voucherId) &&
+        isAdmin() &&
+        isValidVoucherStock(incoming()) &&
+        incoming().createdBy == existing().createdBy &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'assignedToUid', 'assignedRequestId', 'updatedAt'
+        ]);
+      allow delete: if isValidId(voucherId) && isAdmin() && existing().status == 'available';
+    }
+
+    // 8. Voucher Availability (Non-sensitive stock counts per tier)
+    match /voucherAvailability/{tierId} {
+      allow get: if isValidId(tierId) && isVerifiedUser();
+      allow list: if isVerifiedUser();
+      allow create: if isValidId(tierId) &&
+        isAdmin() &&
+        isValidVoucherAvailability(incoming(), tierId) &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(tierId) &&
+        isAdmin() &&
+        isValidVoucherAvailability(incoming(), tierId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['availableCount', 'updatedAt']) &&
+        incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 9. Redemption Requests (User requests real code; Admin fulfills or rejects)
+    match /redemptionRequests/{requestId} {
+      allow get: if isValidId(requestId) && (
+        isAdmin() || (isVerifiedUser() && existing().userId == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isVerifiedUser() && resource.data.userId == request.auth.uid);
+
+      allow create: if isValidId(requestId) &&
+        isVerifiedUser() &&
+        isValidRedemptionRequest(incoming()) &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        (!('voucherCode' in incoming()) || incoming().voucherCode == null) &&
+        (!('adminNote' in incoming()) || incoming().adminNote == null) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.coins ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.coins - incoming().costCoins;
+
+      allow update: if isValidId(requestId) &&
+        isAdmin() &&
+        isValidRedemptionRequest(incoming()) &&
+        existing().status == 'pending' &&
+        incoming().status in ['fulfilled', 'rejected'] &&
+        incoming().userId == existing().userId &&
+        incoming().userContact == existing().userContact &&
+        incoming().tierId == existing().tierId &&
+        incoming().amountInr == existing().amountInr &&
+        incoming().costCoins == existing().costCoins &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'voucherCode', 'adminNote', 'updatedAt']) &&
+        (
+          (incoming().status == 'fulfilled' && incoming().voucherCode is string && incoming().voucherCode.size() >= 8) ||
+          (incoming().status == 'rejected' && (!('voucherCode' in incoming()) || incoming().voucherCode == null))
+        );
+
+      allow delete: if false;
+    }
+  }
+}

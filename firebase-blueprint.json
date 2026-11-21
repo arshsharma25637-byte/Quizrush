@@ -1,0 +1,238 @@
+{
+  "entities": {
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Explicitly authorized administrator record for managing real voucher stock and fulfilling redemptions.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 120 },
+        "addedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "addedBy", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated player profile (Google or Phone OTP), wallet coins, referral stats, and quiz accuracy.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "maxLength": 80 },
+        "email": { "type": "string", "maxLength": 120 },
+        "phoneNumber": { "type": "string", "maxLength": 25 },
+        "authProvider": { "type": "string", "enum": ["google", "phone"] },
+        "coins": { "type": "number" },
+        "totalEarnedCoins": { "type": "number" },
+        "roundsPlayed": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "totalCorrect": { "type": "number" },
+        "bestStreak": { "type": "number" },
+        "referralCode": { "type": "string", "maxLength": 16, "pattern": "^[A-Z0-9]+$" },
+        "referredBy": { "type": "string", "maxLength": 128 },
+        "referralCount": { "type": "number" },
+        "lastDailyBonusDate": { "type": "string", "maxLength": 20 },
+        "lastSpinDate": { "type": "string", "maxLength": 20 },
+        "dailyRoundsDate": { "type": "string", "maxLength": 20 },
+        "dailyRoundsCount": { "type": "number" },
+        "categoryStats": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "email",
+        "phoneNumber",
+        "authProvider",
+        "coins",
+        "totalEarnedCoins",
+        "roundsPlayed",
+        "totalQuestions",
+        "totalCorrect",
+        "bestStreak",
+        "referralCode",
+        "referralCount",
+        "categoryStats",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Publicly safe player ranking projection containing zero PII (no email or phone number).",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "maxLength": 80 },
+        "totalEarnedCoins": { "type": "number" },
+        "bestStreak": { "type": "number" },
+        "roundsPlayed": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "totalEarnedCoins", "bestStreak", "roundsPlayed", "updatedAt"]
+    },
+    "SponsorConfig": {
+      "title": "SponsorConfig",
+      "description": "Admin-managed sponsor banner and CTA link displayed inside interstitial ad breaks.",
+      "type": "object",
+      "properties": {
+        "badgeText": { "type": "string", "maxLength": 40 },
+        "title": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 280 },
+        "ctaLabel": { "type": "string", "maxLength": 50 },
+        "targetUrl": { "type": "string", "maxLength": 300 },
+        "isActive": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["badgeText", "title", "description", "ctaLabel", "targetUrl", "isActive", "updatedAt"]
+    },
+    "EconomyConfig": {
+      "title": "EconomyConfig",
+      "description": "Admin-managed live coin earn rates and daily round limits.",
+      "type": "object",
+      "properties": {
+        "baseCoinsPerRight": { "type": "number" },
+        "streakBonusStep": { "type": "number" },
+        "speedBonusCoins": { "type": "number" },
+        "dailyBonusCoins": { "type": "number" },
+        "rewardAdCoins": { "type": "number" },
+        "dailyRoundLimit": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "baseCoinsPerRight",
+        "streakBonusStep",
+        "speedBonusCoins",
+        "dailyBonusCoins",
+        "rewardAdCoins",
+        "dailyRoundLimit",
+        "updatedAt"
+      ]
+    },
+    "ReferralCode": {
+      "title": "ReferralCode",
+      "description": "Unique shareable referral code mapped to its owner UID.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "maxLength": 16, "pattern": "^[A-Z0-9]+$" },
+        "ownerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerName": { "type": "string", "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "ownerUid", "ownerName", "createdAt"]
+    },
+    "ReferralRecord": {
+      "title": "ReferralRecord",
+      "description": "Immutable single-use referral claim record rewarding 100 coins.",
+      "type": "object",
+      "properties": {
+        "referredUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "referrerUid": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "referralCode": { "type": "string", "maxLength": 16, "pattern": "^[A-Z0-9]+$" },
+        "rewardCoins": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["referredUid", "referrerUid", "referralCode", "rewardCoins", "createdAt"]
+    },
+    "VoucherStockItem": {
+      "title": "VoucherStockItem",
+      "description": "Real Google Play redeem code stocked by an administrator. Never readable by non-admin users.",
+      "type": "object",
+      "properties": {
+        "tierId": { "type": "string", "enum": ["gp-10", "gp-25", "gp-50", "gp-100"] },
+        "amountInr": { "type": "number" },
+        "code": { "type": "string", "minLength": 8, "maxLength": 40 },
+        "status": { "type": "string", "enum": ["available", "assigned"] },
+        "assignedToUid": { "type": "string", "maxLength": 128 },
+        "assignedRequestId": { "type": "string", "maxLength": 128 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tierId", "amountInr", "code", "status", "createdBy", "createdAt", "updatedAt"]
+    },
+    "VoucherAvailability": {
+      "title": "VoucherAvailability",
+      "description": "Publicly readable stock count per Google Play voucher tier without exposing secret codes.",
+      "type": "object",
+      "properties": {
+        "tierId": { "type": "string", "enum": ["gp-10", "gp-25", "gp-50", "gp-100"] },
+        "amountInr": { "type": "number" },
+        "availableCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tierId", "amountInr", "availableCount", "updatedAt"]
+    },
+    "RedemptionRequest": {
+      "title": "RedemptionRequest",
+      "description": "Player voucher redemption request fulfilled with a real Google Play code by an admin.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userContact": { "type": "string", "maxLength": 120 },
+        "userName": { "type": "string", "maxLength": 80 },
+        "tierId": { "type": "string", "enum": ["gp-10", "gp-25", "gp-50", "gp-100"] },
+        "amountInr": { "type": "number" },
+        "costCoins": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "fulfilled", "rejected"] },
+        "voucherCode": { "type": "string", "maxLength": 40 },
+        "adminNote": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "userContact",
+        "userName",
+        "tierId",
+        "amountInr",
+        "costCoins",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Authorized admin users"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Player profile, phone/email, referral code, coin wallet, and trivia stats"
+    },
+    "/leaderboard/{userId}": {
+      "schema": { "$ref": "#/entities/LeaderboardEntry" },
+      "description": "Publicly safe top players leaderboard without PII"
+    },
+    "/sponsorConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SponsorConfig" },
+      "description": "Admin-configured sponsor ad details shown between quizzes"
+    },
+    "/economyConfig/{configId}": {
+      "schema": { "$ref": "#/entities/EconomyConfig" },
+      "description": "Admin-configured coin rates and daily quiz round limits"
+    },
+    "/referralCodes/{code}": {
+      "schema": { "$ref": "#/entities/ReferralCode" },
+      "description": "Referral code lookup table"
+    },
+    "/referrals/{referredUid}": {
+      "schema": { "$ref": "#/entities/ReferralRecord" },
+      "description": "Single-use referral claims granting 100 coins"
+    },
+    "/voucherStock/{voucherId}": {
+      "schema": { "$ref": "#/entities/VoucherStockItem" },
+      "description": "Admin-managed real Google Play redeem codes"
+    },
+    "/voucherAvailability/{tierId}": {
+      "schema": { "$ref": "#/entities/VoucherAvailability" },
+      "description": "Per-tier available voucher stock counts"
+    },
+    "/redemptionRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/RedemptionRequest" },
+      "description": "User voucher redemption requests and fulfilled real codes"
+    }
+  }
+}

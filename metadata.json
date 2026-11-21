@@ -1,0 +1,6 @@
+{
+  "name": "QuizRush",
+  "description": "Play fast-paced trivia across General Knowledge, Cricket & Sports, Science & Tech, and Brain & Math to earn coins and redeem Google Play vouchers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
