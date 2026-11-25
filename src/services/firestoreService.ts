@@ -535,15 +535,14 @@ export async function recordQuestionProgressCloud(
   const path = `users/${uid}`;
   const prevCat = current.categoryStats[questionCategory];
   const safeGain = Math.max(0, Math.min(250, Math.floor(coinsEarned)));
-  const nextTotalEarned = Math.floor(current.totalEarnedCoins) + safeGain;
   const nextBestStreak = Math.max(Math.floor(current.bestStreak), Math.floor(newStreak));
 
   try {
     await updateDoc(doc(db, 'users', uid), {
-      coins: Math.floor(current.coins) + safeGain,
-      totalEarnedCoins: nextTotalEarned,
-      totalQuestions: Math.floor(current.totalQuestions) + 1,
-      totalCorrect: Math.floor(current.totalCorrect) + (isCorrect ? 1 : 0),
+      coins: increment(safeGain),
+      totalEarnedCoins: increment(safeGain),
+      totalQuestions: increment(1),
+      totalCorrect: increment(isCorrect ? 1 : 0),
       bestStreak: nextBestStreak,
       categoryStats: {
         ...current.categoryStats,
@@ -570,7 +569,7 @@ export async function recordRoundFinishedCloud(
     (current.dailyRoundsDate === todayKey ? Math.floor(current.dailyRoundsCount) : 0) + 1;
   try {
     await updateDoc(doc(db, 'users', uid), {
-      roundsPlayed: nextRounds,
+      roundsPlayed: increment(1),
       dailyRoundsDate: todayKey,
       dailyRoundsCount: nextDailyCount,
       updatedAt: serverTimestamp(),
@@ -597,8 +596,8 @@ export async function claimBonusCoinsCloud(
   const safeGain = Math.max(0, Math.min(250, Math.floor(amount)));
   const nextTotalEarned = Math.floor(current.totalEarnedCoins) + safeGain;
   const payload: Record<string, unknown> = {
-    coins: Math.floor(current.coins) + safeGain,
-    totalEarnedCoins: nextTotalEarned,
+    coins: increment(safeGain),
+    totalEarnedCoins: increment(safeGain),
     updatedAt: serverTimestamp(),
   };
   if (options?.dailyDateKey) {
