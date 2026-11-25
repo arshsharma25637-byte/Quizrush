@@ -5,8 +5,13 @@ interface AdsterraBannerProps {
   className?: string;
 }
 
-const AD_BANNER_KEY = (import.meta.env.VITE_ADSTERRA_BANNER_KEY || '').trim();
-const AD_SCRIPT_URL = (import.meta.env.VITE_ADSTERRA_BANNER_SCRIPT_URL || '').trim();
+const AD_BANNER_KEY = (
+  import.meta.env.VITE_ADSTERRA_BANNER_KEY || '593b52b1c2b167ea4df260d75df07322'
+).trim();
+const AD_SCRIPT_URL = (
+  import.meta.env.VITE_ADSTERRA_BANNER_SCRIPT_URL ||
+  'https://bicea.org/22/593b52b1c2b167ea4df260d75df07322'
+).trim();
 
 const IS_VALID_AD_KEY =
   /^[a-zA-Z0-9_-]{8,64}$/.test(AD_BANNER_KEY) && !AD_BANNER_KEY.toUpperCase().startsWith('YOUR_');

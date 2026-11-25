@@ -39,7 +39,7 @@ export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export const BOOTSTRAP_ADMIN_EMAIL = (
-  import.meta.env.VITE_ADMIN_EMAIL || 'YOUR_ADMIN_EMAIL@example.com'
+  import.meta.env.VITE_ADMIN_EMAIL || 'arshsharma25637@gmail.com'
 )
   .trim()
   .toLowerCase();
