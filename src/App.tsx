@@ -208,7 +208,6 @@ export default function App() {
         }
       })
       .catch((err) => {
-        console.error('Google redirect sign-in error:', err);
         setAuthSyncError(err instanceof Error ? err.message : 'Google Sign-In failed.');
       });
   }, []);
@@ -225,7 +224,6 @@ export default function App() {
           const adminStatus = await checkIsAdmin(nextUser);
           setIsAdmin(adminStatus);
         } catch (err) {
-          console.error('Auth initialization error:', err);
           setAuthSyncError(
             err instanceof Error ? err.message : 'Unable to load your player profile.'
           );

@@ -69,7 +69,14 @@ export function generateUserReferralCode(uid: string): string {
 
 export async function checkIsAdmin(user: User | null): Promise<boolean> {
   if (!user) return false;
-  if (user.emailVerified && user.email === BOOTSTRAP_ADMIN_EMAIL) return true;
+  if (
+    user.emailVerified &&
+    user.email &&
+    !BOOTSTRAP_ADMIN_EMAIL.startsWith('your_') &&
+    user.email.toLowerCase() === BOOTSTRAP_ADMIN_EMAIL
+  ) {
+    return true;
+  }
   const path = `admins/${user.uid}`;
   try {
     const snap = await getDoc(doc(db, 'admins', user.uid));

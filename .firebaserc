@@ -1,5 +1,5 @@
 {
   "projects": {
-    "default": "vernal-nation-001dl"
+    "default": "YOUR_FIREBASE_PROJECT_ID_HERE"
   }
 }
