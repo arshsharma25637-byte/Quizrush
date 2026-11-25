@@ -643,29 +643,42 @@ export default function App() {
         />
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">
-          {authSyncError && user && (
+          {authSyncError && (
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-400/40 bg-red-500/15 px-4 py-3 text-xs text-red-100">
               <div className="min-w-0 flex-1 break-words">
-                <strong className="text-red-200">Profile Sync Issue:</strong> {authSyncError}
+                <strong className="text-red-200">Sign-In / Sync Issue:</strong> {authSyncError}
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  setAuthSyncError(null);
-                  try {
-                    await ensureUserProfile(user);
-                    const adminStatus = await checkIsAdmin(user);
-                    setIsAdmin(adminStatus);
-                  } catch (err) {
-                    setAuthSyncError(
-                      err instanceof Error ? err.message : 'Unable to sync profile.'
-                    );
-                  }
-                }}
-                className="min-h-[36px] shrink-0 rounded-xl bg-red-400 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-red-300"
-              >
-                Retry Sync
-              </button>
+              {user ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setAuthSyncError(null);
+                    try {
+                      await ensureUserProfile(user);
+                      const adminStatus = await checkIsAdmin(user);
+                      setIsAdmin(adminStatus);
+                    } catch (err) {
+                      setAuthSyncError(
+                        err instanceof Error ? err.message : 'Unable to sync profile.'
+                      );
+                    }
+                  }}
+                  className="min-h-[36px] shrink-0 rounded-xl bg-red-400 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-red-300"
+                >
+                  Retry Sync
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthSyncError(null);
+                    setAuthModalOpen(true);
+                  }}
+                  className="min-h-[36px] shrink-0 rounded-xl bg-red-400 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-red-300"
+                >
+                  Try Sign-In Again
+                </button>
+              )}
             </div>
           )}
 

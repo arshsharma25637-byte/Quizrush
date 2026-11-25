@@ -5,7 +5,7 @@ import fallbackConfig from '../firebase-applet-config.json';
 
 function readConfigValue(envVal: string | undefined, fallbackVal: string): string {
   const trimmed = envVal?.trim();
-  if (trimmed) return trimmed;
+  if (trimmed && !trimmed.toUpperCase().startsWith('YOUR_')) return trimmed;
   return fallbackVal;
 }
 

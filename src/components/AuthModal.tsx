@@ -118,18 +118,6 @@ export function AuthModal({
     setBusy(true);
     persistPendingRef();
 
-    if (standalone && !inIframe && !isInAppBrowser) {
-      try {
-        await signInWithRedirect(auth, googleProvider);
-        return;
-      } catch (redirErr) {
-        const redirMsg = redirErr instanceof Error ? redirErr.message : String(redirErr);
-        setErrorMsg(formatAuthError(redirMsg));
-        setBusy(false);
-        return;
-      }
-    }
-
     try {
       await signInWithPopup(auth, googleProvider);
       onClose();
@@ -138,6 +126,7 @@ export function AuthModal({
       const shouldAutoRedirect =
         !inIframe &&
         !isInAppBrowser &&
+        !standalone &&
         (msg.includes('popup-blocked') ||
           msg.includes('operation-not-supported-in-this-environment') ||
           msg.includes('web-storage-unsupported'));
@@ -276,6 +265,9 @@ function formatAuthError(msg: string): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   if (msg.includes('unauthorized-domain')) {
     return `Domain "${host}" Firebase Authorized Domains mein add nahi hai. Firebase Console -> Authentication -> Settings -> Authorized domains mein "${host}" add karein.`;
+  }
+  if (msg.includes('api-key-not-valid') || msg.includes('invalid-api-key')) {
+    return 'Firebase config purani/invalid cached hai. Page ko hard refresh karein (ya Vercel par latest code push/redeploy karein).';
   }
   if (msg.includes('popup-blocked')) {
     return 'Browser ne Google Sign-In popup block kiya hai. Popups allow karein ya niche "Alternate Google Sign-In" button dabayein.';
